@@ -2,8 +2,11 @@
 using System.Collections.Generic;
 using UnityEngine;
 namespace EditorFramework {
-	public class HistoryStack {
-		private Stack<ICommand> undoStack = new Stack<ICommand>();
+	public class HistoryStack
+	{
+		private readonly int MAX_HISTORY_COUNT = 10;
+		
+		private List<ICommand> undoStack = new List<ICommand>();
    		private Stack<ICommand> redoStack = new Stack<ICommand>();
 
         public int UndoCount
@@ -18,11 +21,15 @@ namespace EditorFramework {
 
         public bool hasUndoCommand
 		{
-			get { return undoStack.Count > 0; }
+			get { return UndoCount > 0; }
 		}
 
         public bool hasRedoCommand {
-	        get { return redoStack.Count > 0; }
+	        get { return RedoCount > 0; }
+        }
+
+        public bool isHistoryOverflow {
+	        get { return UndoCount > MAX_HISTORY_COUNT; }
         }
 
         public void Reset()
@@ -34,17 +41,19 @@ namespace EditorFramework {
 		public void Do(ICommand cmd)
 		{
 			cmd.Do();
-			undoStack.Push(cmd);
+			undoStack.Add(cmd);
 			redoStack.Clear();
+			OverflowCheck();
 		}
 
 		public void Undo()
 		{
 			if(hasUndoCommand)
 			{
-				ICommand cmd = undoStack.Pop();
-
+				ICommand cmd = undoStack[UndoCount-1];
+				
 				cmd.Undo();
+				undoStack.Remove(cmd);
 				redoStack.Push(cmd);
 			}
 		}
@@ -56,13 +65,21 @@ namespace EditorFramework {
 				ICommand cmd = redoStack.Pop();
 
 				cmd.Do();
-				undoStack.Push(cmd);
+				undoStack.Add(cmd);
 			}
 		}
 
 		public T Spwaner<T>() where T:ICommand,new()
 		{
 			return new T();
+		}
+
+		private void OverflowCheck()
+		{
+			if (isHistoryOverflow)
+			{
+				undoStack.RemoveAt(0);
+			}
 		}
 	}
 }
